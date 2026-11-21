@@ -1,6 +1,9 @@
 @echo off
 chcp 65001 >nul
 rem Старт сервера дашборда (без открытия браузера).
+rem Если дашборд уже работает - не запускаем вторую копию
+%SystemRoot%\System32\curl.exe -s -o nul --max-time 2 http://127.0.0.1:8471/ 2>nul
+if not errorlevel 1 exit /b 0
 rem Python ищется: PATH -> типичные папки -> python\ рядом (скачан ранее) -> авто-загрузка.
 
 set "PYEXE="

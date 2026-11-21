@@ -12,6 +12,7 @@ import ctypes
 import json
 import os
 import re
+import socket
 import subprocess
 import threading
 import time
@@ -738,6 +739,15 @@ load();
 
 # ---------------------------------------------------------------- сервер
 
+class DashboardServer(ThreadingHTTPServer):
+    def server_bind(self):
+        # запрет двойного биндинга порта на Windows (без этого второй
+        # экземпляр молча разделяет порт и отдаёт свои пустые данные)
+        if os.name == "nt":
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -877,7 +887,7 @@ def main():
             write_config(read_config())
         except Exception:
             log_line(traceback.format_exc())
-    server = ThreadingHTTPServer((HOST, PORT), Handler)
+    server = DashboardServer((HOST, PORT), Handler)
     log_line("Старт дашборда: http://%s:%d/ (%s)" % (HOST, PORT, os.path.basename(__file__)))
     try:
         server.serve_forever()

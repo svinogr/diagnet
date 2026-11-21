@@ -7,7 +7,9 @@ rem Путь к ВАШЕМУ батнику с диагностикой.
 rem По умолчанию ищется файл diag.bat рядом с этим скриптом.
 set "DIAG=%~dp0diag.bat"
 rem Файл с результатами в формате Markdown
-set "MDLOG=%~dp0netdiag_results.md"
+if not exist "%~dp0..\data" mkdir "%~dp0..\data"
+set "MDLOG=%~dp0..\data
+etdiag_results.md"
 rem ══════════════════════════════════
 
 if not exist "%DIAG%" (
