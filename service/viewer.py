@@ -71,6 +71,9 @@ BOOL_KEYS = {k for k in CONFIG_DEFAULTS if k.startswith("DO_")}
 IP_RE = re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
 TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 SET_RE = re.compile(r'^set\s+"([A-Z0-9_]+)=(.*)"\s*$', re.M)
+# Белый список для значений, попадающих в cmd/PowerShell (идея из PR #1)
+HOSTNAME_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$")
+URL_RE = re.compile(r"^https?://[A-Za-z0-9.-]+(?::\d{1,5})?(?:/[A-Za-z0-9._~/-]*)?$")
 
 
 def valid_ip(val):
@@ -116,6 +119,12 @@ def validate_config(data):
         elif key in ("GW_FIXED", "DNS1", "DNS2", "DNS_TCP_SERVER"):
             if not valid_ip(val):
                 return None, "%s: неверный IP-адрес" % key
+        elif key in ("NSLOOKUP_HOST", "TRACE_HOST", "HOP_TARGET"):
+            if not HOSTNAME_RE.match(val):
+                return None, "%s: только латиница, цифры, точка и дефис" % key
+        elif key in ("CURL1_URL", "CURL2_URL"):
+            if len(val) > 300 or not URL_RE.match(val):
+                return None, "%s: нужен адрес вида https://host/path (без параметров)" % key
         else:
             if not val or not all(32 <= ord(c) < 127 for c in val) or any(c in val for c in "'\"%&<>^|"):
                 return None, "%s: недопустимое значение" % key
@@ -803,6 +812,9 @@ class Handler(BaseHTTPRequestHandler):
             return None
 
     def do_GET(self):
+        if not self._origin_ok():
+            self._forbidden()
+            return
         if self.path == "/":
             self._send(200, "text/html; charset=utf-8", PAGE)
         elif self.path == "/api/entries":
@@ -832,6 +844,17 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, "text/plain; charset=utf-8", "not found")
 
+    def _origin_ok(self):
+        # Host отсекает DNS rebinding, Origin - CSRF с чужих сайтов.
+        host = (self.headers.get("Host") or "").strip().lower()
+        if host not in ("127.0.0.1:%d" % PORT, "localhost:%d" % PORT):
+            return False
+        origin = self.headers.get("Origin")
+        if origin and origin.strip().lower() not in ("http://127.0.0.1:%d" % PORT,
+                                                     "http://localhost:%d" % PORT):
+            return False
+        return True
+
     def _post_guard(self):
         # CSRF-защита: принимаем POST только от своей страницы.
         # Браузер со стороннего сайта не сумеет отправить наш
@@ -839,19 +862,15 @@ class Handler(BaseHTTPRequestHandler):
         # мы не одобряем (нет CORS-заголовков). Origin/Host - доп. фильтр.
         if self.headers.get("X-Requested-With") != "XMLHttpRequest":
             return False
-        origin = self.headers.get("Origin")
-        if origin and origin not in ("http://127.0.0.1:%d" % PORT,
-                                     "http://localhost:%d" % PORT):
-            return False
-        host = self.headers.get("Host", "")
-        if host not in ("127.0.0.1:%d" % PORT, "localhost:%d" % PORT):
-            return False
-        return True
+        return self._origin_ok()
+
+    def _forbidden(self):
+        self._send(403, "application/json; charset=utf-8",
+                   json.dumps({"error": "Доступ запрещён"}))
 
     def do_POST(self):
         if not self._post_guard():
-            self._send(403, "application/json; charset=utf-8",
-                       json.dumps({"error": "Доступ запрещён"}))
+            self._forbidden()
             return
         if self.path == "/api/run":
             if not RUN_LOCK.acquire(blocking=False):
