@@ -1,0 +1,12 @@
+# служебное
+__pycache__/
+*.pyc
+service/viewer.log
+
+# результаты работы (не для git)
+service/netdiag_results.md
+service/hop_results.md
+python/
+
+# ярлык создаётся при первом запуске
+*.lnk
