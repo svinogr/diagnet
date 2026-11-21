@@ -62,6 +62,9 @@ type "%LOG%"
 exit /b %FAIL%
 
 rem ============ Проверки (по одной подпрограмме) ============
+rem Значения из config.bat передаются в PowerShell через $env:ИМЯ,
+rem а не вставляются в текст команды - иначе кавычка в значении
+rem превращается в выполнение произвольного кода.
 
 :detect_gw
 for /f "usebackq delims=" %%G in (`powershell -NoProfile -Command "(Get-NetRoute -DestinationPrefix 0.0.0.0/0 | Sort-Object RouteMetric | Select-Object -First 1).NextHop"`) do set "GW=%%G"
@@ -109,12 +112,12 @@ exit /b 0
 :do_dns_udp
 set /a N+=1
 echo --- %N%. DNS/UDP direct to %DNS1% --- >> "%LOG%"
-powershell -NoProfile -Command "$r = Resolve-DnsName '%NSLOOKUP_HOST%' -Server '%DNS1%' -Type A -DnsOnly -ErrorAction SilentlyContinue; if ($r) { Write-Output ('DNS/UDP %DNS1%: OK -> ' + $r[0].IPAddress) } else { Write-Output 'DNS/UDP %DNS1%: TIMEOUT/FAIL'; exit 1 }" >> "%LOG%" 2>&1
+powershell -NoProfile -Command "$h = $env:NSLOOKUP_HOST; $s = $env:DNS1; $r = Resolve-DnsName $h -Server $s -Type A -DnsOnly -ErrorAction SilentlyContinue; if ($r) { Write-Output ('DNS/UDP ' + $s + ': OK -> ' + $r[0].IPAddress) } else { Write-Output ('DNS/UDP ' + $s + ': TIMEOUT/FAIL'); exit 1 }" >> "%LOG%" 2>&1
 if errorlevel 1 set FAIL=1
 echo. >> "%LOG%"
 set /a N+=1
 echo --- %N%. DNS/UDP direct to %DNS2% --- >> "%LOG%"
-powershell -NoProfile -Command "$r = Resolve-DnsName '%NSLOOKUP_HOST%' -Server '%DNS2%' -Type A -DnsOnly -ErrorAction SilentlyContinue; if ($r) { Write-Output ('DNS/UDP %DNS2%: OK -> ' + $r[0].IPAddress) } else { Write-Output 'DNS/UDP %DNS2%: TIMEOUT/FAIL'; exit 1 }" >> "%LOG%" 2>&1
+powershell -NoProfile -Command "$h = $env:NSLOOKUP_HOST; $s = $env:DNS2; $r = Resolve-DnsName $h -Server $s -Type A -DnsOnly -ErrorAction SilentlyContinue; if ($r) { Write-Output ('DNS/UDP ' + $s + ': OK -> ' + $r[0].IPAddress) } else { Write-Output ('DNS/UDP ' + $s + ': TIMEOUT/FAIL'); exit 1 }" >> "%LOG%" 2>&1
 if errorlevel 1 set FAIL=1
 echo. >> "%LOG%"
 exit /b 0
@@ -122,7 +125,7 @@ exit /b 0
 :do_dns_tcp
 set /a N+=1
 echo --- %N%. DNS/TCP direct to %DNS_TCP_SERVER% (contrast) --- >> "%LOG%"
-powershell -NoProfile -Command "$r = Resolve-DnsName '%NSLOOKUP_HOST%' -Server '%DNS_TCP_SERVER%' -Type A -TcpOnly -ErrorAction SilentlyContinue; if ($r) { Write-Output ('DNS/TCP %DNS_TCP_SERVER%: OK -> ' + $r[0].IPAddress) } else { Write-Output 'DNS/TCP %DNS_TCP_SERVER%: TIMEOUT/FAIL'; exit 1 }" >> "%LOG%" 2>&1
+powershell -NoProfile -Command "$h = $env:NSLOOKUP_HOST; $s = $env:DNS_TCP_SERVER; $r = Resolve-DnsName $h -Server $s -Type A -TcpOnly -ErrorAction SilentlyContinue; if ($r) { Write-Output ('DNS/TCP ' + $s + ': OK -> ' + $r[0].IPAddress) } else { Write-Output ('DNS/TCP ' + $s + ': TIMEOUT/FAIL'); exit 1 }" >> "%LOG%" 2>&1
 if errorlevel 1 set FAIL=1
 echo. >> "%LOG%"
 exit /b 0

@@ -71,6 +71,15 @@ BOOL_KEYS = {k for k in CONFIG_DEFAULTS if k.startswith("DO_")}
 IP_RE = re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
 TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 SET_RE = re.compile(r'^set\s+"([A-Z0-9_]+)=(.*)"\s*$', re.M)
+# Имена хостов и URL - только по белому списку символов: значения попадают
+# в cmd и PowerShell, кавычки и спецсимволы там опасны.
+HOSTNAME_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$")
+URL_RE = re.compile(r"^https?://[A-Za-z0-9.-]+(?::\d{1,5})?(?:/[A-Za-z0-9._~/-]*)?$")
+HOST_KEYS = ("NSLOOKUP_HOST", "TRACE_HOST", "HOP_TARGET")
+URL_KEYS = ("CURL1_URL", "CURL2_URL")
+# Запросы принимаются только от самого дашборда (защита от CSRF и DNS rebinding)
+ALLOWED_HOSTS = {"127.0.0.1:%d" % PORT, "localhost:%d" % PORT}
+ALLOWED_ORIGINS = {"http://" + h for h in ALLOWED_HOSTS}
 
 
 def valid_ip(val):
@@ -116,9 +125,14 @@ def validate_config(data):
         elif key in ("GW_FIXED", "DNS1", "DNS2", "DNS_TCP_SERVER"):
             if not valid_ip(val):
                 return None, "%s: неверный IP-адрес" % key
+        elif key in HOST_KEYS:
+            if not HOSTNAME_RE.match(val):
+                return None, "%s: допустимы только латиница, цифры, точка и дефис" % key
+        elif key in URL_KEYS:
+            if len(val) > 300 or not URL_RE.match(val):
+                return None, "%s: нужен адрес вида https://host/path (без параметров)" % key
         else:
-            if not val or not all(32 <= ord(c) < 127 for c in val) or any(c in val for c in '"%&<>^|'):
-                return None, "%s: недопустимое значение" % key
+            return None, "%s: неизвестный параметр" % key
         cfg[key] = val
     if cfg["GW_MODE"] == "fixed" and not valid_ip(cfg["GW_FIXED"]):
         return None, "GW_FIXED: неверный IP-адрес"
@@ -766,6 +780,22 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(blob)
 
+    def _request_allowed(self):
+        """Пропускать только запросы со страницы самого дашборда.
+
+        Host отсекает DNS rebinding, Origin - CSRF с чужих сайтов
+        (браузер всегда шлёт Origin в межсайтовых POST)."""
+        host = (self.headers.get("Host") or "").strip().lower()
+        if host not in ALLOWED_HOSTS:
+            return False
+        origin = self.headers.get("Origin")
+        if origin is not None and origin.strip().lower() not in ALLOWED_ORIGINS:
+            return False
+        return True
+
+    def _forbidden(self):
+        self._send(403, "text/plain; charset=utf-8", "forbidden")
+
     def _json_body(self):
         try:
             length = int(self.headers.get("Content-Length", 0))
@@ -774,6 +804,9 @@ class Handler(BaseHTTPRequestHandler):
             return None
 
     def do_GET(self):
+        if not self._request_allowed():
+            self._forbidden()
+            return
         if self.path == "/":
             self._send(200, "text/html; charset=utf-8", PAGE)
         elif self.path == "/api/entries":
@@ -804,6 +837,9 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, "text/plain; charset=utf-8", "not found")
 
     def do_POST(self):
+        if not self._request_allowed():
+            self._forbidden()
+            return
         if self.path == "/api/run":
             if not RUN_LOCK.acquire(blocking=False):
                 self._send(409, "application/json; charset=utf-8",

@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 rem ════════════════════════════════════════════════════════════
 rem  Запустите этот файл ОТ ИМЕНИ АДМИНИСТРАТОРА (права нужны,
 rem  чтобы создать задачу в Планировщике).
@@ -13,11 +14,9 @@ schtasks /Create /F /TN "NetDiagHourly" /TR "\"%~dp0netdiag_wrapper.bat\"" /SC H
 if %ERRORLEVEL%==0 (
     echo.
     echo Задача "NetDiagHourly" создана: каждый час в :00 (начиная с 5:00).
-    echo Результаты будут дописываться в: %~dp0netdiag_results.md
+    echo Результаты будут дописываться в: %~dp0..\data\netdiag_results.md
 ) else (
     echo.
     echo ОШИБКА создания задачи. Запустили файл от имени администратора?
 )
 pause
-
-chcp 65001 >nul
