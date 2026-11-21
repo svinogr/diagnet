@@ -1,4 +1,4 @@
-﻿# Проверка маршрута по узлам в стиле WinMTR.
+# Проверка маршрута по узлам в стиле WinMTR.
 # Строит маршрут до HOP_TARGET и параллельно пингует каждый узел
 # HOP_COUNT раз, пишет таблицу потерь/задержек в hop_results.md.
 # Параметры берутся из config.bat (HOP_TARGET, HOP_COUNT).
@@ -20,7 +20,9 @@ if ($count -lt 1) { $count = 1000 }
 
 $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
 $startTime = Get-Date
-$logPath = Join-Path $scriptDir 'hop_results.md'
+$dataDir = Join-Path (Join-Path $scriptDir '..') 'data'
+New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
+$logPath = Join-Path $dataDir 'hop_results.md'
 $workDir = Join-Path $env:TEMP ('hopcheck_' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 New-Item -ItemType Directory -Path $workDir | Out-Null
 

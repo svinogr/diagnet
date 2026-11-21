@@ -19,9 +19,11 @@ import time
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MD_LOG = os.path.join(BASE_DIR, "netdiag_results.md")
-HOP_LOG = os.path.join(BASE_DIR, "hop_results.md")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))   # папка service\
+KIT_DIR = os.path.dirname(BASE_DIR)                     # корень набора
+DATA_DIR = os.path.join(KIT_DIR, "data")
+MD_LOG = os.path.join(DATA_DIR, "netdiag_results.md")
+HOP_LOG = os.path.join(DATA_DIR, "hop_results.md")
 WRAPPER = os.path.join(BASE_DIR, "netdiag_wrapper.bat")
 HOPCHECK = os.path.join(BASE_DIR, "hopcheck.ps1")
 CONFIG = os.path.join(BASE_DIR, "config.bat")
@@ -740,6 +742,10 @@ load();
 # ---------------------------------------------------------------- сервер
 
 class DashboardServer(ThreadingHTTPServer):
+    # SO_REUSEADDR несовместим с SO_EXCLUSIVEADDRUSE на Windows -
+    # выключаем reuse, иначе двойной биндинг порта проходит молча.
+    allow_reuse_address = False
+
     def server_bind(self):
         # запрет двойного биндинга порта на Windows (без этого второй
         # экземпляр молча разделяет порт и отдаёт свои пустые данные)
@@ -882,12 +888,21 @@ def log_line(msg):
 
 
 def main():
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+    except Exception:
+        log_line(traceback.format_exc())
     if not os.path.exists(CONFIG):
         try:
             write_config(read_config())
         except Exception:
             log_line(traceback.format_exc())
-    server = DashboardServer((HOST, PORT), Handler)
+    try:
+        server = DashboardServer((HOST, PORT), Handler)
+    except Exception:
+        log_line("Не удалось занять порт %s:%d - вероятно, дашборд уже запущен.\n%s"
+                 % (HOST, PORT, traceback.format_exc()))
+        raise
     log_line("Старт дашборда: http://%s:%d/ (%s)" % (HOST, PORT, os.path.basename(__file__)))
     try:
         server.serve_forever()

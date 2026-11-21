@@ -8,8 +8,7 @@ rem По умолчанию ищется файл diag.bat рядом с эти�
 set "DIAG=%~dp0diag.bat"
 rem Файл с результатами в формате Markdown
 if not exist "%~dp0..\data" mkdir "%~dp0..\data"
-set "MDLOG=%~dp0..\data
-etdiag_results.md"
+set "MDLOG=%~dp0../data/netdiag_results.md"
 rem ══════════════════════════════════
 
 if not exist "%DIAG%" (
