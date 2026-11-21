@@ -27,6 +27,13 @@ echo Python не найден. Скачиваю портативную копи�
 set "PYZIP=%TEMP%\pyembed_%RANDOM%.zip"
 curl -fsSL -o "%PYZIP%" "https://www.python.org/ftp/python/3.12.9/python-3.12.9-embed-amd64.zip" 2>nul
 if errorlevel 1 goto dlfail
+set "PYEXPECTED=615861FB801E8B04C847598DB4E1E46E4B046295017CAA37CB5486DDE72B5865"
+for /f "usebackq delims=" %%H in (`powershell -NoProfile -Command "(Get-FileHash -Algorithm SHA256 -LiteralPath '%PYZIP%').Hash"`) do set "PYHASH=%%H"
+if /i not "%PYHASH%"=="%PYEXPECTED%" (
+    echo Скачанный файл не прошёл проверку контрольной суммы - прерываю.
+    del /q "%PYZIP%" 2>nul
+    exit /b 2
+)
 mkdir "%~dp0python" 2>nul
 tar -xf "%PYZIP%" -C "%~dp0python" 2>nul
 del /q "%PYZIP%" 2>nul

@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 rem ════════════════════════════════════════════════════════════
 rem  Запустите этот файл ОТ ИМЕНИ АДМИНИСТРАТОРА (права нужны,
 rem  чтобы создать задачу в Планировщике).
@@ -8,16 +9,14 @@ rem  залогинен. Чтобы запускать всегда (даже б
 rem  добавьте в строку schtasks ниже параметры:  /RU SYSTEM /RL HIGHEST
 rem ════════════════════════════════════════════════════════════
 
-schtasks /Create /F /TN "NetDiagHourly" /TR "\"%~dp0netdiag_wrapper.bat\"" /SC HOURLY /MO 1 /ST 05:00
+schtasks /Create /F /TN "NetDiagHourly" /TR "\"%~dp0netdiag_wrapper.bat\"" /SC MINUTE /MO 60
 
 if %ERRORLEVEL%==0 (
     echo.
-    echo Задача "NetDiagHourly" создана: каждый час в :00 (начиная с 5:00).
-    echo Результаты будут дописываться в: %~dp0netdiag_results.md
+    echo Задача "NetDiagHourly" создана: каждые 60 минут.
+    echo Результаты будут дописываться в: %~dp0..\data\netdiag_results.md
 ) else (
     echo.
     echo ОШИБКА создания задачи. Запустили файл от имени администратора?
 )
 pause
-
-chcp 65001 >nul

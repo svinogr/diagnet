@@ -1,6 +1,6 @@
-# Проверка маршрута по узлам в стиле WinMTR.
+﻿# Проверка маршрута по узлам в стиле WinMTR.
 # Строит маршрут до HOP_TARGET и параллельно пингует каждый узел
-# HOP_COUNT раз, пишет таблицу потерь/задержек в hop_results.md.
+# HOP_COUNT раз, пишет таблицу потерь/задержек в data\hop_results.md.
 # Параметры берутся из config.bat (HOP_TARGET, HOP_COUNT).
 $ErrorActionPreference = 'SilentlyContinue'
 

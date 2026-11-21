@@ -117,7 +117,7 @@ def validate_config(data):
             if not valid_ip(val):
                 return None, "%s: неверный IP-адрес" % key
         else:
-            if not val or not all(32 <= ord(c) < 127 for c in val) or any(c in val for c in '"%&<>^|'):
+            if not val or not all(32 <= ord(c) < 127 for c in val) or any(c in val for c in "'\"%&<>^|"):
                 return None, "%s: недопустимое значение" % key
         cfg[key] = val
     if cfg["GW_MODE"] == "fixed" and not valid_ip(cfg["GW_FIXED"]):
@@ -425,90 +425,105 @@ form.settings { background:var(--panel); border:1px solid var(--border); border-
 
 <section id="settings" style="display:none">
   <h2>Основная проверка</h2>
+  <div class="taskline" id="taskInfo">Загрузка…</div>
   <form class="settings" onsubmit="return false">
     <div class="grp">
-      <div class="grp-title">Ping</div>
-      <div class="row">
-        <label>Число ping-пакетов <input type="number" id="PING_COUNT" min="1" max="100"></label>
-        <label>Роутер:
-          <select id="GW_MODE">
-            <option value="auto">автоопределение шлюза</option>
-            <option value="fixed">вручную</option>
-          </select>
-        </label>
-        <label>IP роутера <input type="text" id="GW_FIXED" style="width:120px"></label>
+      <div class="grp-title">Параметры</div>
+      <div class="grp">
+        <div class="grp-title">Ping</div>
+        <div class="row">
+          <label>Число ping-пакетов <input type="number" id="PING_COUNT" min="1" max="100"></label>
+          <label>Роутер:
+            <select id="GW_MODE">
+              <option value="auto">автоопределение шлюза</option>
+              <option value="fixed">вручную</option>
+            </select>
+          </label>
+          <label>IP роутера <input type="text" id="GW_FIXED" style="width:120px"></label>
+        </div>
+        <div class="row">
+          <label><input type="checkbox" id="DO_PING_ROUTER"> Ping роутера</label>
+          <label><input type="checkbox" id="DO_PING_8888"> Ping 8.8.8.8</label>
+        </div>
+      </div>
+      <div class="grp">
+        <div class="grp-title">DNS</div>
+        <div class="row">
+          <label><input type="checkbox" id="DO_NSLOOKUP"> NSLookup (системный резолвер)</label>
+          <label><input type="checkbox" id="DO_DNS_UDP"> DNS по UDP напрямую</label>
+          <label><input type="checkbox" id="DO_DNS_TCP"> DNS по TCP напрямую</label>
+        </div>
+        <div class="row">
+          <label>Хост для запросов <input type="text" id="NSLOOKUP_HOST" style="width:180px"></label>
+        </div>
+        <div class="row">
+          <label>DNS-сервер #1 (UDP) <input type="text" id="DNS1" style="width:120px"></label>
+          <label>DNS-сервер #2 (UDP) <input type="text" id="DNS2" style="width:120px"></label>
+          <label>DNS-сервер для TCP-проверки <input type="text" id="DNS_TCP_SERVER" style="width:120px"></label>
+        </div>
+      </div>
+      <div class="grp">
+        <div class="grp-title">HTTPS (время соединения)</div>
+        <div class="row">
+          <label><input type="checkbox" id="DO_CURL1"> Проверка #1</label>
+          <input type="text" id="CURL1_URL" class="grow" placeholder="https://...">
+        </div>
+        <div class="row">
+          <label><input type="checkbox" id="DO_CURL2"> Проверка #2</label>
+          <input type="text" id="CURL2_URL" class="grow" placeholder="https://...">
+        </div>
+      </div>
+      <div class="grp">
+        <div class="grp-title">Трассировка</div>
+        <div class="row">
+          <label><input type="checkbox" id="DO_TRACERT"> Выполнять</label>
+          <label>Хост <input type="text" id="TRACE_HOST" style="width:160px"></label>
+          <label>Лимит хопов <input type="number" id="TRACE_HOPS" min="1" max="50"></label>
+        </div>
       </div>
       <div class="row">
-        <label><input type="checkbox" id="DO_PING_ROUTER"> Ping роутера</label>
-        <label><input type="checkbox" id="DO_PING_8888"> Ping 8.8.8.8</label>
+        <button class="primary" onclick="saveConfig()">Сохранить параметры</button>
+        <span id="cfgStatus"></span>
       </div>
     </div>
     <div class="grp">
-      <div class="grp-title">DNS</div>
+      <div class="grp-title">Расписание</div>
       <div class="row">
-        <label><input type="checkbox" id="DO_NSLOOKUP"> NSLookup (системный резолвер)</label>
-        <label><input type="checkbox" id="DO_DNS_UDP"> DNS по UDP напрямую</label>
-        <label><input type="checkbox" id="DO_DNS_TCP"> DNS по TCP напрямую</label>
+        <label>Интервал: каждые <input type="number" id="interval" min="5" max="720" value="60"> минут</label>
+        <button class="primary" onclick="installTask()">Установить / обновить задачу</button>
+        <button class="danger" onclick="deleteTask()">Удалить задачу</button>
+        <button onclick="runMainNow()">Запустить один раз</button>
+        <span id="runStatus"></span>
       </div>
-      <div class="row">
-        <label>Хост для запросов <input type="text" id="NSLOOKUP_HOST" style="width:180px"></label>
-      </div>
-      <div class="row">
-        <label>DNS-сервер #1 (UDP) <input type="text" id="DNS1" style="width:120px"></label>
-        <label>DNS-сервер #2 (UDP) <input type="text" id="DNS2" style="width:120px"></label>
-        <label>DNS-сервер для TCP-проверки <input type="text" id="DNS_TCP_SERVER" style="width:120px"></label>
-      </div>
-    </div>
-    <div class="grp">
-      <div class="grp-title">HTTPS (время соединения)</div>
-      <div class="row">
-        <label><input type="checkbox" id="DO_CURL1"> Проверка #1</label>
-        <input type="text" id="CURL1_URL" class="grow" placeholder="https://...">
-      </div>
-      <div class="row">
-        <label><input type="checkbox" id="DO_CURL2"> Проверка #2</label>
-        <input type="text" id="CURL2_URL" class="grow" placeholder="https://...">
-      </div>
-    </div>
-    <div class="grp">
-      <div class="grp-title">Трассировка</div>
-      <div class="row">
-        <label><input type="checkbox" id="DO_TRACERT"> Выполнять</label>
-        <label>Хост <input type="text" id="TRACE_HOST" style="width:160px"></label>
-        <label>Лимит хопов <input type="number" id="TRACE_HOPS" min="1" max="50"></label>
-      </div>
-    </div>
-    <div class="row">
-      <button class="primary" onclick="saveConfig()">Сохранить параметры</button>
-      <span id="cfgStatus"></span>
+      <div class="hint">При установке/удалении может появиться запрос UAC — нажмите «Да». Пока вы не вошли в Windows, задача не выполняется.</div>
     </div>
   </form>
 
-  <h2>Расписание автоматической проверки</h2>
-  <div class="taskline" id="taskInfo">Загрузка…</div>
-  <div class="row">
-    <label>Интервал: каждые <input type="number" id="interval" min="5" max="720" value="60"> минут</label>
-    <button class="primary" onclick="installTask()">Установить / обновить задачу</button>
-    <button class="danger" onclick="deleteTask()">Удалить задачу</button>
-  </div>
-  <div class="hint">При установке/удалении может появиться запрос UAC — нажмите «Да».</div>
-
   <h2>Проверка по узлам (стиль WinMTR)</h2>
   <div class="taskline" id="hopInfo">Загрузка…</div>
-  <div class="row">
-    <label>Цель <input type="text" id="HOP_TARGET" style="width:140px"></label>
-    <label>Пакетов на узел <input type="number" id="HOP_COUNT" min="10" max="5000"></label>
-    <label>Интервал: каждые <input type="number" id="HOP_INTERVAL" min="10" max="1440" value="30"> минут</label>
-  </div>
-  <div class="row">
-    <button class="primary" onclick="saveHopConfig()">Сохранить параметры</button>
-    <button class="primary" onclick="installHopTask()">Установить задачу</button>
-    <button class="danger" onclick="deleteHopTask()">Удалить задачу</button>
-    <button onclick="runHopNow()">Запустить сейчас</button>
-    <span id="hopStatus"></span>
-  </div>
-  <div class="hint">Пингует каждый узел маршрута. 1000 пакетов ≈ 17 минут (узлы параллельно).
-  Результаты — в «Журнале по узлам».</div>
+  <form class="settings" onsubmit="return false">
+    <div class="grp">
+      <div class="grp-title">Параметры</div>
+      <div class="row">
+        <label>Цель <input type="text" id="HOP_TARGET" style="width:140px"></label>
+        <label>Пакетов на узел <input type="number" id="HOP_COUNT" min="10" max="5000"></label>
+      </div>
+      <div class="row">
+        <button class="primary" onclick="saveHopConfig()">Сохранить параметры</button>
+        <span id="hopStatus"></span>
+      </div>
+    </div>
+    <div class="grp">
+      <div class="grp-title">Расписание</div>
+      <div class="row">
+        <label>Интервал: каждые <input type="number" id="HOP_INTERVAL" min="10" max="1440" value="30"> минут</label>
+        <button class="primary" onclick="installHopTask()">Установить задачу</button>
+        <button class="danger" onclick="deleteHopTask()">Удалить задачу</button>
+        <button onclick="runHopNow()">Запустить один раз</button>
+      </div>
+      <div class="hint">Пингует каждый узел маршрута. 1000 пакетов ≈ 17 минут (узлы параллельно); если прогон не уложился в интервал, следующий ждёт завершения текущего. Результаты — в «Журнале по узлам».</div>
+    </div>
+  </form>
 </section>
 
 <script>
@@ -579,7 +594,7 @@ async function runNow() {
   btn.disabled = true;
   st.textContent = "Выполняется… (~2 мин), вкладку можно не ждать — запись появится в списке";
   try {
-    const r = await fetch("/api/run", { method: "POST" });
+    const r = await fetch("/api/run", { method: "POST", headers: {"X-Requested-With": "XMLHttpRequest"} });
     const data = await r.json();
     if (data.rc === 0) { st.innerHTML = '<span style="color:var(--ok)">Готово: OK</span>'; }
     else if (data.rc !== undefined) { st.innerHTML = '<span class="err-text">Готово: ОШИБКА, код ' + data.rc + '</span>'; }
@@ -608,7 +623,7 @@ async function saveConfig() {
   for (const k of BOOL_KEYS) cfg[k] = document.getElementById(k).checked ? "1" : "0";
   const st = document.getElementById("cfgStatus");
   const r = await fetch("/api/config", {
-    method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(cfg)
+    method: "POST", headers: {"Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest"}, body: JSON.stringify(cfg)
   });
   if (r.ok) { st.innerHTML = '<span style="color:var(--ok)">Сохранено</span>'; }
   else {
@@ -636,7 +651,7 @@ async function installTask() {
   const el = document.getElementById("taskInfo");
   el.textContent = "Создание/обновление задачи… если появился запрос UAC — нажмите «Да».";
   const r = await fetch("/api/task/install", {
-    method: "POST", headers: {"Content-Type": "application/json"},
+    method: "POST", headers: {"Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest"},
     body: JSON.stringify({minutes: document.getElementById("interval").value})
   });
   const data = await r.json();
@@ -648,7 +663,7 @@ async function deleteTask() {
   if (!confirm("Удалить задачу автоматической проверки?")) return;
   const el = document.getElementById("taskInfo");
   el.textContent = "Удаление задачи… если появился запрос UAC — нажмите «Да».";
-  const r = await fetch("/api/task/delete", { method: "POST" });
+  const r = await fetch("/api/task/delete", { method: "POST", headers: {"X-Requested-With": "XMLHttpRequest"} });
   const data = await r.json();
   if (r.ok && data.ok) { el.innerHTML = '<span style="color:var(--ok)">Задача удалена.</span>'; }
   else { el.innerHTML = '<span class="err-text">Ошибка: ' + esc(data.error || r.status) + '</span>'; }
@@ -661,7 +676,7 @@ async function loadHopTask() {
 }
 async function saveHopConfig() {
   const r = await fetch("/api/config", {
-    method: "POST", headers: {"Content-Type": "application/json"},
+    method: "POST", headers: {"Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest"},
     body: JSON.stringify({HOP_TARGET: document.getElementById("HOP_TARGET").value,
                           HOP_COUNT: document.getElementById("HOP_COUNT").value,
                           HOP_INTERVAL: document.getElementById("HOP_INTERVAL").value})
@@ -675,7 +690,7 @@ async function installHopTask() {
   const el = document.getElementById("hopStatus");
   el.textContent = "Создание задачи… если появился запрос UAC — нажмите «Да».";
   const r = await fetch("/api/hoptask/install", {
-    method: "POST", headers: {"Content-Type": "application/json"},
+    method: "POST", headers: {"Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest"},
     body: JSON.stringify({minutes: document.getElementById("HOP_INTERVAL").value})
   });
   const data = await r.json();
@@ -686,15 +701,29 @@ async function installHopTask() {
 async function deleteHopTask() {
   if (!confirm("Удалить задачу проверки по узлам?")) return;
   const el = document.getElementById("hopStatus");
-  const r = await fetch("/api/hoptask/delete", { method: "POST" });
+  const r = await fetch("/api/hoptask/delete", { method: "POST", headers: {"X-Requested-With": "XMLHttpRequest"} });
   const data = await r.json();
   if (r.ok && data.ok) { el.innerHTML = '<span style="color:var(--ok)">Задача удалена.</span>'; }
   else { el.innerHTML = '<span class="err-text">Ошибка: ' + esc(data.error || r.status) + '</span>'; }
   loadHopTask();
 }
+async function runMainNow() {
+  const st = document.getElementById("runStatus");
+  st.textContent = "Выполняется… (~2 мин)";
+  try {
+    const r = await fetch("/api/run", { method: "POST", headers: {"X-Requested-With": "XMLHttpRequest"} });
+    const data = await r.json();
+    if (data.rc === 0) { st.innerHTML = '<span style="color:var(--ok)">Готово: OK</span>'; }
+    else if (data.rc !== undefined) { st.innerHTML = '<span class="err-text">Готово: ОШИБКА, код ' + data.rc + '</span>'; }
+    else { st.innerHTML = '<span class="err-text">' + esc(data.error || "ошибка запуска") + '</span>'; }
+  } catch (e) {
+    st.innerHTML = '<span class="err-text">Сервер недоступен</span>';
+  }
+}
+
 async function runHopNow() {
   const st = document.getElementById("hopStatus");
-  const r = await fetch("/api/hoprun", { method: "POST" });
+  const r = await fetch("/api/hoprun", { method: "POST", headers: {"X-Requested-With": "XMLHttpRequest"} });
   const data = await r.json();
   if (!r.ok) { st.innerHTML = '<span class="err-text">' + esc(data.error || r.status) + '</span>'; return; }
   st.textContent = "Проверка по узлам выполняется… (смотрите «Журнал по узлам»)";
@@ -803,7 +832,27 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, "text/plain; charset=utf-8", "not found")
 
+    def _post_guard(self):
+        # CSRF-защита: принимаем POST только от своей страницы.
+        # Браузер со стороннего сайта не сумеет отправить наш
+        # пользовательский заголовок без CORS-preflight, а preflight
+        # мы не одобряем (нет CORS-заголовков). Origin/Host - доп. фильтр.
+        if self.headers.get("X-Requested-With") != "XMLHttpRequest":
+            return False
+        origin = self.headers.get("Origin")
+        if origin and origin not in ("http://127.0.0.1:%d" % PORT,
+                                     "http://localhost:%d" % PORT):
+            return False
+        host = self.headers.get("Host", "")
+        if host not in ("127.0.0.1:%d" % PORT, "localhost:%d" % PORT):
+            return False
+        return True
+
     def do_POST(self):
+        if not self._post_guard():
+            self._send(403, "application/json; charset=utf-8",
+                       json.dumps({"error": "Доступ запрещён"}))
+            return
         if self.path == "/api/run":
             if not RUN_LOCK.acquire(blocking=False):
                 self._send(409, "application/json; charset=utf-8",

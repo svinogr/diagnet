@@ -18,9 +18,9 @@ curl, tar. Python требуется только для дашборда и п�
 - `data\` — журналы (создаётся автоматически): `netdiag_results.md`,
   `hop_results.md`. Код сюда не смотрит, только данные.
 - `service\diag.bat` — основная проверка (ping/DNS UDP+TCP/HTTPS/tracert),
-  читает параметры из `service\config.bat`, пишет в `service\netdiag_results.md`.
+  читает параметры из `service\config.bat`, пишет в `data\netdiag_results.md`.
 - `service\hopcheck.ps1` — проверка по узлам маршрута (стиль WinMTR):
-  параллельный ping каждого хопа, пишет в `service\hop_results.md`.
+  параллельный ping каждого хопа, пишет в `data\hop_results.md`.
 - `service\netdiag_wrapper.bat` — обёртка над diag.bat: перенаправляет
   вывод, вызывает append_to_md.ps1, код возврата = результат проверки.
 - `service\append_to_md.ps1` — дописывает запись в MD-журнал (UTF-8 BOM).
@@ -47,6 +47,9 @@ curl, tar. Python требуется только для дашборда и п�
 - Вывод cmd-утилит читается как OEM (CP866) или UTF-8 после `chcp 65001`
   (в hopcheck.ps1 — обе разновидности).
 - Дашборд слушает только 127.0.0.1:8471, без внешних зависимостей.
+- POST-запросы к дашборду требуют заголовок `X-Requested-With`
+  (защита от CSRF); значения конфига валидируются, одинарная кавычка
+  в именах хостов запрещена (защита от инъекций в PowerShell).
 
 ## Дашборд
 

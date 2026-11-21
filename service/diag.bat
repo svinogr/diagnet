@@ -28,6 +28,11 @@ if not defined DO_TRACERT set "DO_TRACERT=1"
 if not defined TRACE_HOST set "TRACE_HOST=ya.ru"
 if not defined TRACE_HOPS set "TRACE_HOPS=15"
 
+rem Защита от инъекции: имена хостов вставляются в команду PowerShell,
+rem поэтому вырезаем одинарные кавычки (на случай ручной правки config.bat).
+set "NSLOOKUP_HOST=%NSLOOKUP_HOST:'=%"
+set "TRACE_HOST=%TRACE_HOST:'=%"
+
 rem Роутер: из настроек или автоопределение основного шлюза.
 set "GW=%GW_FIXED%"
 if /i "%GW_MODE%"=="auto" call :detect_gw
